@@ -1,4 +1,5 @@
-import { JPEG_QUALITY, MAX_DIM, type Halaman, type Size } from './types'
+import { detectQuad } from './detect'
+import { JPEG_QUALITY, MAX_DIM, type Halaman, type Quad, type Size } from './types'
 import { fullQuad } from './warp'
 
 /** Downscale a decoded image to MAX_DIM long edge and encode as JPEG. */
@@ -24,23 +25,33 @@ export async function decode(blob: Blob): Promise<ImageBitmap> {
   return createImageBitmap(blob, { imageOrientation: 'from-image' })
 }
 
-export function newHalaman(src: Blob, size: Size): Halaman {
+export function newHalaman(src: Blob, size: Size, crop: Quad = fullQuad(size)): Halaman {
   return {
     id: crypto.randomUUID(),
     size,
     src,
-    crop: fullQuad(size),
+    crop,
     filter: 'original',
     rotation: 0,
   }
 }
 
-/** Load an uploaded File into a Halaman, rejecting formats the browser cannot decode. */
+/**
+ * Load an uploaded File into a Halaman, rejecting formats the browser cannot decode.
+ * The crop is detected on the *stored* (downscaled) copy, so its coordinates are
+ * in the same space as `size` — detecting on the original would land the quad
+ * outside the image for any photo over 2000px.
+ */
 export async function halamanFromFile(file: File): Promise<Halaman> {
   const bitmap = await decode(file)
   try {
     const { blob, size } = await normalizeSource(bitmap)
-    return newHalaman(blob, size)
+    const small = await decode(blob)
+    try {
+      return newHalaman(blob, size, detectQuad(small) ?? fullQuad(size))
+    } finally {
+      small.close()
+    }
   } finally {
     bitmap.close()
   }

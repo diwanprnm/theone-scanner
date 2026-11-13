@@ -13,6 +13,18 @@
       rel="stylesheet"
     />
     <title>Theonescan</title>
+    <script>
+      // Chrome fires beforeinstallprompt once, early. Hold it here, before the
+      // bundle loads, or the event is gone by the time React mounts.
+      addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault()
+        window.__bip = e
+        dispatchEvent(new Event('bipready'))
+      })
+      addEventListener('appinstalled', function () {
+        window.__bip = null
+      })
+    </script>
   </head>
   <body>
     <div id="root"></div>

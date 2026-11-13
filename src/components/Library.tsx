@@ -163,7 +163,7 @@ export default function Library({ activeId, onOpen }: Props) {
           onClick={() => void (canInstall ? install() : setMsg(hint))}
           aria-label="Pasang aplikasi"
           title="Pasang aplikasi"
-          className="absolute bottom-[70px] right-5 z-20 flex h-12 w-12 items-center justify-center border-2 border-ink bg-paper text-ink shadow-none active:bg-plate"
+          className="absolute bottom-[92px] right-4 z-20 flex h-12 w-12 items-center justify-center border-2 border-ink bg-paper text-ink active:bg-plate"
         >
           <Icon name="install" size={20} />
         </button>

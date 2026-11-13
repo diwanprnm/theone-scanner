@@ -1,8 +1,8 @@
 /**
- * PWA install. Chrome/Edge fire `beforeinstallprompt` once, usually before React
- * mounts, so the event is captured at module load — a listener inside useEffect
- * races the browser and loses, which leaves the app offering manual instructions
- * when it could have opened the real install dialog.
+ * PWA install. `beforeinstallprompt` fires once and early, so index.html grabs it
+ * into `window.__bip` before the bundle even loads. A listener registered here
+ * races the browser and usually loses, which leaves the button stuck on manual
+ * instructions when it could have opened the real install dialog.
  */
 import { useEffect, useState } from 'react'
 
@@ -11,35 +11,31 @@ interface PromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
+declare global {
+  interface Window {
+    __bip?: PromptEvent | null
+  }
+}
+
 const ua = navigator.userAgent
 const isIOS = /iPhone|iPad|iPod/.test(ua)
 
-let deferred: PromptEvent | null = null
-const watchers = new Set<(e: PromptEvent | null) => void>()
-
-const notify = (e: PromptEvent | null) => {
-  deferred = e
-  watchers.forEach((w) => w(e))
-}
-
-addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault()
-  notify(e as PromptEvent)
-})
-addEventListener('appinstalled', () => notify(null))
-
 export function useInstall() {
-  const [event, setEvent] = useState<PromptEvent | null>(deferred)
+  const [event, setEvent] = useState<PromptEvent | null>(() => window.__bip ?? null)
   const [installed, setInstalled] = useState(
     () => matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true,
   )
 
   useEffect(() => {
-    watchers.add(setEvent)
-    const onInstalled = () => setInstalled(true)
+    const sync = () => setEvent(window.__bip ?? null)
+    const onInstalled = () => {
+      setInstalled(true)
+      setEvent(null)
+    }
+    addEventListener('bipready', sync)
     addEventListener('appinstalled', onInstalled)
     return () => {
-      watchers.delete(setEvent)
+      removeEventListener('bipready', sync)
       removeEventListener('appinstalled', onInstalled)
     }
   }, [])
@@ -49,7 +45,8 @@ export function useInstall() {
     await event.prompt()
     const { outcome } = await event.userChoice
     if (outcome === 'accepted') setInstalled(true)
-    notify(null)
+    window.__bip = null
+    setEvent(null)
     return outcome === 'accepted'
   }
 

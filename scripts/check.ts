@@ -1,6 +1,7 @@
 // Self-check for the two pieces of non-trivial math: homography + quad validity.
 // Run with `npm run check`. Bundled by esbuild so the TS/ESM source runs on Node.
 import assert from 'node:assert/strict'
+import { quadFromLuma } from '../src/lib/detect'
 import { fullQuad, homography, isBadQuad, targetSize } from '../src/lib/warp'
 
 function apply(H: number[], u: number, v: number) {
@@ -103,4 +104,46 @@ const near = (a: number, b: number, eps = 1e-6) => assert.ok(Math.abs(a - b) < e
   assert.equal(pages[0].id, 'a', 'move must not mutate the source array')
 }
 
-console.log('check: warp + page order OK')
+// 6. Auto crop finds a tilted sheet on a dark desk, in the right corner order.
+{
+  const w = 200
+  const h = 260
+  const luma = new Uint8Array(w * h).fill(40) // dark desk
+  const sheet = [
+    [30, 25],
+    [175, 45],
+    [168, 235],
+    [22, 220],
+  ]
+  // Point-in-quad via the same half-plane test, so the fixture is not a rectangle.
+  const inside = (x: number, y: number) => {
+    let sign = 0
+    for (let i = 0; i < 4; i++) {
+      const [ax, ay] = sheet[i]
+      const [bx, by] = sheet[(i + 1) % 4]
+      const z = (bx - ax) * (y - ay) - (by - ay) * (x - ax)
+      if (Math.abs(z) < 1e-9) continue
+      if (sign === 0) sign = Math.sign(z)
+      else if (Math.sign(z) !== sign) return false
+    }
+    return true
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (inside(x, y)) luma[y * w + x] = 235
+
+  const q = quadFromLuma(luma, w, h)
+  assert.ok(q, 'a bright sheet on a dark desk must be found')
+  const expect = sheet.map(([x, y]) => ({ x, y }))
+  q.forEach((p, i) => {
+    // The 1.5% outward growth plus erosion moves the corner a few pixels; 12 is
+    // well inside a real mis-detection, which would be tens of pixels off.
+    assert.ok(Math.hypot(p.x - expect[i].x, p.y - expect[i].y) < 12, `corner ${i} off: ${JSON.stringify(p)}`)
+  })
+}
+
+// 7. A scene with no sheet (all one tone) returns null rather than a guess.
+{
+  const flat = new Uint8Array(120 * 120).fill(128)
+  assert.equal(quadFromLuma(flat, 120, 120), null, 'flat scene must not produce a quad')
+}
+
+console.log('check: warp + page order + auto crop OK')

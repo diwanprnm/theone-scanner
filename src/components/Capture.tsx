@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { detectQuad } from '../lib/detect'
 import { decode, halamanFromFile, normalizeSource, newHalaman } from '../lib/source'
+import { fullQuad } from '../lib/warp'
 import { MAX_PAGES, MAX_UPLOAD_BYTES, type Halaman } from '../lib/types'
 import Icon from './Icon'
 
@@ -69,7 +71,13 @@ export default function Capture({ onPages, onCancel, pageCount, onExceed }: Prop
       const bitmap = await decode(await new Promise<Blob>((res) => c.toBlob((b) => res(b!), 'image/jpeg', 0.95)))
       try {
         const { blob, size } = await normalizeSource(bitmap)
-        await add([newHalaman(blob, size)])
+        // Detect on the downscaled copy so the quad matches the stored source.
+        const small = await decode(blob)
+        try {
+          await add([newHalaman(blob, size, detectQuad(small) ?? fullQuad(size))])
+        } finally {
+          small.close()
+        }
       } finally {
         bitmap.close()
       }

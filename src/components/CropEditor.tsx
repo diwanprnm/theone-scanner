@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { decode } from '../lib/source'
-import Icon from './Icon'
+import { detectQuad } from '../lib/detect'
 import { fullQuad, isBadQuad, targetSize } from '../lib/warp'
+import Icon from './Icon'
 import type { Halaman, Pt, Quad } from '../lib/types'
 
 const HANDLE = 12
@@ -145,6 +146,21 @@ export default function CropEditor({ page, pageIndex = 0, onSave, onCancel }: Pr
   const loupeAt = drag !== null ? quad[drag] : null
   const out = targetSize(quad, 2000)
 
+  // Detection ran on capture, but a bad guess (dark paper, cluttered desk) should
+  // be re-runnable here without rescanning the page.
+  const [note, setNote] = useState<string | null>(null)
+  const autoDetect = () => {
+    const bmp = bitmapRef.current
+    if (!bmp) return
+    const q = detectQuad(bmp)
+    if (q) {
+      setQuad(q)
+      setNote(null)
+    } else {
+      setNote('Tepi kertas tidak terdeteksi')
+    }
+  }
+
   return (
     <div className="flex h-full flex-col">
       <header className="shrink-0 px-4 pb-2 pt-4">
@@ -160,7 +176,17 @@ export default function CropEditor({ page, pageIndex = 0, onSave, onCancel }: Pr
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <button
-              onClick={() => setQuad(fullQuad(page.size))}
+              onClick={autoDetect}
+              className="link-action inline-flex items-center gap-1 text-[11px]"
+            >
+              <Icon name="crop" size={11} />
+              Otomatis
+            </button>
+            <button
+              onClick={() => {
+                setQuad(fullQuad(page.size))
+                setNote(null)
+              }}
               className="link-action inline-flex items-center gap-1 text-[11px]"
             >
               <Icon name="reset" size={11} />
