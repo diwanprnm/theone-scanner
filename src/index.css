@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/* "Cetak" tokens: print-shop specimen sheet. Paper white, heavy ink, two rule
+   weights, one process cyan. Sharp corners, no shadow, no gradient. */
+@theme {
+  --color-paper: #ffffff;
+  --color-ink: #0a0a0a;
+  --color-ink-2: #4a4a4a;
+  --color-hair: #c9c9c4;
+  --color-plate: #f2f2f0;
+  --color-process: #00727e;
+  --color-process-wash: #e6f2f3;
+
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-spec: "Space Mono", ui-monospace, monospace;
+}
+
+html, body, #root { height: 100%; }
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+}
+
+/* Every enabled control shows it is usable; every focus ring is visible. */
+button:not(:disabled), a[href], label[for], select { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+:focus-visible {
+  outline: 2px solid var(--color-process);
+  outline-offset: 2px;
+}
+
+@layer components {
+  /* Specimen label: condensed, uppercase, tracking 0. The heading voice. */
+  .display {
+    @apply font-display font-semibold uppercase leading-none tracking-normal;
+  }
+  /* Every figure and unit, so columns of numbers do not wobble. */
+  .num {
+    font-family: var(--font-spec);
+    font-variant-numeric: tabular-nums;
+  }
+  /* Small caption naming a readout. */
+  .kicker {
+    @apply text-[9px] uppercase tracking-[0.08em] text-ink-2;
+  }
+
+  /* Primary action: full-width solid ink bar at the base of the screen. */
+  .bar-action {
+    @apply flex w-full items-center justify-center bg-ink py-3.5 font-display text-[15px] font-bold uppercase text-paper active:opacity-80 disabled:opacity-40;
+  }
+  /* Secondary: 1px ink outline. Never more than one per screen. */
+  .bar-outline {
+    @apply flex w-full items-center justify-center border border-ink py-3 font-display text-[13px] font-semibold uppercase text-ink active:bg-plate disabled:opacity-40;
+  }
+  /* Tertiary: underlined text. The only shape left for a third choice. */
+  .link-action {
+    @apply border-b border-ink pb-0.5 text-[11px] uppercase text-ink-2 active:text-ink disabled:opacity-40;
+  }
+}

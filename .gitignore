@@ -1,0 +1,11 @@
+.mcp.json
+node_modules
+dist
+dev-dist
+scripts/_check.mjs
+.DS_Store
+*.local
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+graft/
+.claude/
