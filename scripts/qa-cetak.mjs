@@ -3,7 +3,7 @@ export default async function run(page, ui) {
   const errs = []
   page.on('pageerror', (e) => errs.push(String(e)))
 
-  await page.goto('http://localhost:4173/')
+  await page.goto('http://localhost:5174/')
   await page.waitForTimeout(600)
 
   await page.evaluate(async () => {
@@ -114,12 +114,12 @@ export default async function run(page, ui) {
   await page.setViewportSize({ width: 390, height: 844 })
 
   // A hash-only goto does not remount the app, so reload to pick up the seed.
-  await page.goto('http://localhost:4173/#/')
+  await page.goto('http://localhost:5174/#/')
   await page.reload()
   await page.waitForTimeout(1600)
   await page.screenshot({ path: 'qa/1-library.png' })
 
-  await page.goto('http://localhost:4173/#/doc/qa-doc-1')
+  await page.goto('http://localhost:5174/#/doc/qa-doc-1')
   await page.reload()
   await page.waitForTimeout(2400)
   await page.screenshot({ path: 'qa/2-editor.png' })

@@ -2,7 +2,7 @@
 // export filename.
 export default async function run(page) {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('http://localhost:4173/')
+  await page.goto('http://localhost:5174/')
   await page.waitForTimeout(500)
 
   await page.evaluate(async () => {
@@ -58,7 +58,7 @@ export default async function run(page) {
     })
   })
 
-  await page.goto('http://localhost:4173/#/')
+  await page.goto('http://localhost:5174/#/')
   await page.reload()
   await page.waitForTimeout(1500)
 

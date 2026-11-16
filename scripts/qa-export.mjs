@@ -2,7 +2,7 @@
 // never starts, or starts empty, is the failure this catches.
 export default async function run(page) {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('http://localhost:4173/')
+  await page.goto('http://localhost:5174/')
   await page.waitForTimeout(500)
 
   await page.evaluate(async () => {
@@ -65,11 +65,11 @@ export default async function run(page) {
     })
   })
 
-  await page.goto('http://localhost:4173/#/doc/exp-doc')
+  await page.goto('http://localhost:5174/#/doc/exp-doc')
   await page.reload()
   await page.waitForTimeout(1800)
 
-  await page.getByRole('button', { name: 'EKSPOR' }).click()
+  await page.getByRole('button', { name: 'Ekspor', exact: true }).click()
   await page.waitForTimeout(600)
 
   // PDF
@@ -80,7 +80,7 @@ export default async function run(page) {
 
   // JPEG: reopen the sheet, switch format
   await page.waitForTimeout(500)
-  await page.getByRole('button', { name: 'EKSPOR' }).click()
+  await page.getByRole('button', { name: 'Ekspor', exact: true }).click()
   await page.waitForTimeout(500)
   await page.getByRole('button', { name: 'jpeg', exact: true }).click()
   await page.waitForTimeout(300)
@@ -89,7 +89,7 @@ export default async function run(page) {
   const jpg = await jpgWait
 
   // Backup
-  await page.goto('http://localhost:4173/#/')
+  await page.goto('http://localhost:5174/#/')
   await page.reload()
   await page.waitForTimeout(1200)
   const zipWait = page.waitForEvent('download', { timeout: 30000 })

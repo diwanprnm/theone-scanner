@@ -1,6 +1,6 @@
 // Seed then measure the editor layout at phone size.
 export default async function run(page, ui) {
-  await page.goto('http://localhost:4173/')
+  await page.goto('http://localhost:5174/')
   await page.waitForTimeout(600)
   await page.evaluate(async () => {
     const open = () =>
@@ -67,7 +67,7 @@ export default async function run(page, ui) {
   })
 
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('http://localhost:4173/#/doc/qa-doc-1')
+  await page.goto('http://localhost:5174/#/doc/qa-doc-1')
   await page.waitForTimeout(1400)
 
   const m = await page.evaluate(() => {

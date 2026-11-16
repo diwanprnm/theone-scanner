@@ -3,7 +3,7 @@
 // window: this driver evaluates in an isolated world and cannot see app globals.
 export default async function run(page) {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('http://localhost:4173/')
+  await page.goto('http://localhost:5174/')
   await page.waitForTimeout(1200)
 
   const msgVisible = () => page.evaluate(() => !!document.querySelector('[aria-label="Tutup pesan"]'))

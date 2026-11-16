@@ -1,55 +1,129 @@
-// Uploads a synthetic "photo": a tilted bright sheet on a dark desk. Auto crop
-// must land on the sheet, not on the full frame.
+// Uploads synthetic "photos" and checks auto crop lands on the sheet, not the
+// frame: a plain tilted sheet, one with a shadow across it, and one with a
+// bright lamp blob in the scene. Reads the output size the crop screen shows.
+const SCENES = [
+  {
+    name: 'tilted',
+    w: 900,
+    h: 1200,
+    sheet: [
+      [150, 120],
+      [760, 190],
+      [735, 1050],
+      [120, 990],
+    ],
+    shade: 0,
+    blob: null,
+  },
+  {
+    name: 'shadow',
+    w: 900,
+    h: 1200,
+    sheet: [
+      [150, 120],
+      [760, 190],
+      [735, 1050],
+      [120, 990],
+    ],
+    shade: 150,
+    blob: null,
+  },
+  {
+    name: 'lamp',
+    w: 900,
+    h: 1200,
+    sheet: [
+      [150, 120],
+      [760, 190],
+      [735, 1050],
+      [120, 990],
+    ],
+    shade: 40,
+    blob: { x: 840, y: 1130, r: 55 },
+  },
+]
+
 export default async function run(page) {
   await page.setViewportSize({ width: 390, height: 844 })
-  // First load at #/doc/new already creates the doc and opens Capture; a reload
-  // would land on the saved doc in view mode instead.
-  await page.goto('http://localhost:4173/#/doc/new')
-  await page.waitForTimeout(2500)
+  const out = []
 
-  // Build the photo as a PNG in the page, then hand it to the file input.
-  const dataUrl = await page.evaluate(() => {
-    const w = 900
-    const h = 1200
-    const c = document.createElement('canvas')
-    c.width = w
-    c.height = h
-    const x = c.getContext('2d')
-    x.fillStyle = '#3a3a3a'
-    x.fillRect(0, 0, w, h)
-    // Tilted sheet.
-    x.save()
-    x.translate(w / 2, h / 2)
-    x.rotate(-0.07)
-    x.fillStyle = '#f4f4ef'
-    x.fillRect(-330, -460, 660, 920)
-    x.fillStyle = '#222'
-    for (let i = 0; i < 16; i++) x.fillRect(-270, -360 + i * 44, 480, 7)
-    x.restore()
-    return c.toDataURL('image/png')
-  })
-
-  const buf = Buffer.from(dataUrl.split(',')[1], 'base64')
-  await page.locator('input[type=file]').first().setInputFiles({
-    name: 'foto.png',
-    mimeType: 'image/png',
-    buffer: buf,
-  })
-  await page.waitForTimeout(2500)
-
-  // The new page opens in view mode; open the crop screen to read the quad.
-  const crop = page.getByRole('button', { name: 'Potong', exact: true })
-  const hasCrop = (await crop.count()) > 0
-  if (hasCrop) {
-    await crop.click()
+  for (const s of SCENES) {
+    // A fresh document per scene: back to the library, then Scan baru. A
+    // hash-only goto does not remount the app, so reload instead.
+    await page.goto('http://localhost:5174/#/')
+    await page.reload()
     await page.waitForTimeout(1200)
+    await page.getByRole('button', { name: 'Scan baru' }).click()
+    await page.waitForTimeout(2500)
+
+    const dataUrl = await page.evaluate((s) => {
+      const c = document.createElement('canvas')
+      c.width = s.w
+      c.height = s.h
+      const x = c.getContext('2d')
+      x.fillStyle = '#3a3a3a'
+      x.fillRect(0, 0, s.w, s.h)
+      if (s.blob) {
+        const g = x.createRadialGradient(s.blob.x, s.blob.y, 0, s.blob.x, s.blob.y, s.blob.r)
+        g.addColorStop(0, '#ffffff')
+        g.addColorStop(1, '#3a3a3a')
+        x.fillStyle = g
+        x.beginPath()
+        x.arc(s.blob.x, s.blob.y, s.blob.r, 0, Math.PI * 2)
+        x.fill()
+      }
+      // The sheet, filled with a shading ramp when `shade` is set: a hand shadow.
+      const [tl, tr, br, bl] = s.sheet
+      const g = x.createLinearGradient(tl[0], 0, tr[0], 0)
+      g.addColorStop(0, `rgb(${244 - s.shade},${244 - s.shade},${239 - s.shade})`)
+      g.addColorStop(1, '#f4f4ef')
+      x.fillStyle = g
+      x.beginPath()
+      x.moveTo(tl[0], tl[1])
+      x.lineTo(tr[0], tr[1])
+      x.lineTo(br[0], br[1])
+      x.lineTo(bl[0], bl[1])
+      x.closePath()
+      x.fill()
+      // Text lines, so the mask has interior structure to ignore.
+      x.save()
+      x.beginPath()
+      x.moveTo(tl[0], tl[1])
+      x.lineTo(tr[0], tr[1])
+      x.lineTo(br[0], br[1])
+      x.lineTo(bl[0], bl[1])
+      x.closePath()
+      x.clip()
+      x.fillStyle = '#222'
+      for (let i = 0; i < 18; i++) x.fillRect(tl[0] + 80, tl[1] + 90 + i * 46, 480, 8)
+      x.restore()
+      return c.toDataURL('image/png')
+    }, s)
+
+    const buf = Buffer.from(dataUrl.split(',')[1], 'base64')
+    await page.locator('input[type=file]').first().setInputFiles({
+      name: `${s.name}.png`,
+      mimeType: 'image/png',
+      buffer: buf,
+    })
+    await page.waitForTimeout(2200)
+
+    const crop = page.getByRole('button', { name: 'Potong', exact: true })
+    const hasCrop = (await crop.count()) > 0
+    if (hasCrop) {
+      await crop.click()
+      await page.waitForTimeout(1200)
+    }
+    const readout = hasCrop ? await page.locator('text=/\\d+ × \\d+ px/').first().innerText() : null
+    await page.screenshot({ path: `qa/13-autocrop-${s.name}.png` })
+
+    // What the crop should be: the sheet's own long edges, capped at 2000.
+    const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1])
+    const [tl, tr, br, bl] = s.sheet
+    const w = Math.ceil(Math.max(d(tl, tr), d(bl, br)))
+    const h = Math.ceil(Math.max(d(tl, bl), d(tr, br)))
+    out.push({ scene: s.name, readout, expected: `${w} × ${h} px` })
   }
 
-  const readout = hasCrop ? await page.locator('text=/\\d+ × \\d+ px/').first().innerText() : null
-  await page.screenshot({ path: 'qa/8-autocrop.png' })
-
-  // Full frame would be 900x1200 → ratio 0.75. The sheet is 660x920 → ratio 0.717.
-  const m = readout?.match(/(\d+) × (\d+) px/)
-  const ratio = m ? Number(m[1]) / Number(m[2]) : null
-  return { hasCrop, readout, ratio, sheetRatio: 660 / 920 }
+  return out
 }

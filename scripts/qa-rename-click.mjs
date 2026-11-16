@@ -1,7 +1,7 @@
 // Click the title text in the editor header and check the inline input opens.
 export default async function run(page, ui) {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('http://localhost:4173/')
+  await page.goto('http://localhost:5174/')
   await page.waitForTimeout(500)
 
   await page.evaluate(async () => {
@@ -55,7 +55,7 @@ export default async function run(page, ui) {
     })
   })
 
-  await page.goto('http://localhost:4173/#/doc/ck-doc')
+  await page.goto('http://localhost:5174/#/doc/ck-doc')
   await page.waitForTimeout(1500)
 
   // In the editor the pencil opens the inline rename, not the title text.

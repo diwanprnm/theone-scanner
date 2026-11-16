@@ -146,4 +146,117 @@ const near = (a: number, b: number, eps = 1e-6) => assert.ok(Math.abs(a - b) < e
   assert.equal(quadFromLuma(flat, 120, 120), null, 'flat scene must not produce a quad')
 }
 
+// 8. Harder scenes: the ones the single-threshold version got wrong.
+{
+  // Paint a quad of `val` luma into a field, with an optional linear shading
+  // ramp across it (a hand shadow) and optional extra bright blobs.
+  const scene = (
+    w: number,
+    h: number,
+    desk: number,
+    sheet: Pt[],
+    val: number,
+    shade = 0,
+    blobs: { at: Pt; r: number; v: number }[] = [],
+  ) => {
+    const luma = new Uint8Array(w * h).fill(desk)
+    const inside = (x: number, y: number) => {
+      let sign = 0
+      for (let i = 0; i < 4; i++) {
+        const a = sheet[i]
+        const b = sheet[(i + 1) % 4]
+        const z = (b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x)
+        if (Math.abs(z) < 1e-9) continue
+        const s = Math.sign(z)
+        if (sign === 0) sign = s
+        else if (s !== sign) return false
+      }
+      return true
+    }
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let v = desk
+        if (inside(x, y)) v = val - shade * (x / w)
+        for (const b of blobs) if (Math.hypot(x - b.at.x, y - b.at.y) < b.r) v = b.v
+        luma[y * w + x] = Math.max(0, Math.min(255, v))
+      }
+    }
+    return luma
+  }
+  const off = (q: Quad | null, sheet: Pt[]) => {
+    assert.ok(q, 'sheet must be found')
+    return Math.max(...q.map((p, i) => Math.hypot(p.x - sheet[i].x, p.y - sheet[i].y)))
+  }
+
+  const w = 300
+  const h = 380
+  const sheet = [
+    { x: 55, y: 40 },
+    { x: 255, y: 62 },
+    { x: 246, y: 340 },
+    { x: 44, y: 322 },
+  ]
+
+  // 8a. A shadow across the sheet must not split it: the left half is dimmer.
+  {
+    const luma = scene(w, h, 40, sheet, 235, 110)
+    assert.ok(off(quadFromLuma(luma, w, h), sheet) < 10, 'shadow across the sheet broke detection')
+  }
+
+  // 8b. A brighter blob (lamp) elsewhere must not win over the sheet.
+  {
+    const luma = scene(w, h, 40, sheet, 225, 0, [{ at: { x: 275, y: 355 }, r: 26, v: 255 }])
+    assert.ok(off(quadFromLuma(luma, w, h), sheet) < 10, 'a bright blob stole the quad')
+  }
+
+  // 8c. Corners land on the paper edge, not on the extreme pixel of a coarse mask.
+  {
+    const luma = scene(w, h, 30, sheet, 240)
+    assert.ok(off(quadFromLuma(luma, w, h), sheet) < 4, 'corner placement is loose')
+  }
+
+  // 8d. No sheet: a smooth gradient is a lit wall, not a page edge.
+  {
+    const grad = new Uint8Array(w * h)
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) grad[y * w + x] = (40 + (x / w) * 170) | 0
+    assert.equal(quadFromLuma(grad, w, h), null, 'a smooth gradient is not a sheet')
+  }
+
+  // 8e. A sheet rotated past 45° still comes back in TL, TR, BR, BL order.
+  {
+    const tall = [
+      { x: 95, y: 30 },
+      { x: 250, y: 210 },
+      { x: 60, y: 330 },
+      { x: 20, y: 150 },
+    ]
+    const luma = scene(w, h, 40, tall, 235)
+    const q = quadFromLuma(luma, w, h)
+    assert.ok(q, 'rotated sheet must be found')
+    // The quad must be wound in the same direction as a plain TL,TR,BR,BL box.
+    const area = q.reduce((acc, a, i) => {
+      const b = q[(i + 1) % 4]
+      return acc + a.x * b.y - b.x * a.y
+    }, 0)
+    assert.ok(area > 0, 'corner order must stay TL,TR,BR,BL')
+    assert.ok(q[0].x < q[1].x && q[0].y < q[3].y, 'top-left must be top and left')
+  }
+
+  // 8f. White paper on a pale desk: the border is a small step, and the lamp
+  // makes the desk brighter than the paper on one side, so no single threshold
+  // separates them. The border is still an edge.
+  {
+    const luma = scene(w, h, 208, sheet, 240, 60)
+    assert.ok(off(quadFromLuma(luma, w, h), sheet) < 12, 'pale desk defeated detection')
+  }
+
+  // 8g. An empty desk must stay null: a vignette is not a sheet.
+  {
+    const luma = new Uint8Array(w * h)
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) luma[y * w + x] = (200 - 60 * Math.hypot(x / w - 0.5, y / h - 0.5)) | 0
+    assert.equal(quadFromLuma(luma, w, h), null, 'an empty desk is not a sheet')
+  }
+}
+
 console.log('check: warp + page order + auto crop OK')
