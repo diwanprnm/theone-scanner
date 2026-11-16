@@ -62,9 +62,16 @@ export default async function run(page) {
   await page.reload()
   await page.waitForTimeout(1500)
 
-  // 1. Rename from the library list.
-  await page.getByRole('button', { name: 'Ubah nama scan-lama' }).click()
-  await page.waitForTimeout(300)
+  // 1. Long press a row in the library list, then rename from its menu.
+  await page.getByText('scan-lama').hover()
+  await page.mouse.down()
+  await page.waitForTimeout(700)
+  await page.mouse.up()
+  await page.waitForTimeout(400)
+  const menuShown = await page.getByRole('button', { name: 'Ubah nama' }).count()
+  await page.screenshot({ path: 'qa/12-longpress-menu.png' })
+  await page.getByRole('button', { name: 'Ubah nama' }).click()
+  await page.waitForTimeout(400)
   const libInput = page.getByLabel('Nama dokumen')
   await libInput.fill('Surat Tanah 2026')
   await libInput.press('Enter')
@@ -107,5 +114,5 @@ export default async function run(page) {
   await page.waitForTimeout(1200)
   const afterExportRename = await page.getByText('Sertifikat Rumah').count()
 
-  return { afterLibrary, afterReload, exportName, headerName, afterExportRename }
+  return { menuShown, afterLibrary, afterReload, exportName, headerName, afterExportRename }
 }

@@ -19,6 +19,10 @@ export default function Library({ activeId, onOpen }: Props) {
   const [msg, setMsg] = useState<string | null>(null)
   const [renaming, setRenaming] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
+  // Long press opens the row menu; the tap that ends it must not open the doc.
+  const [menu, setMenu] = useState<Dokumen | null>(null)
+  const pressTimer = useRef<number | null>(null)
+  const longPressed = useRef(false)
   const importRef = useRef<HTMLInputElement>(null)
   const { canInstall, installed, install, hint } = useInstall()
 
@@ -53,6 +57,20 @@ export default function Library({ activeId, onOpen }: Props) {
   const startRename = (d: Dokumen) => {
     setDraft(d.name)
     setRenaming(d.id)
+  }
+
+  const endPress = () => {
+    if (pressTimer.current !== null) window.clearTimeout(pressTimer.current)
+    pressTimer.current = null
+  }
+
+  const startPress = (d: Dokumen) => {
+    longPressed.current = false
+    endPress()
+    pressTimer.current = window.setTimeout(() => {
+      longPressed.current = true
+      setMenu(d)
+    }, 450)
   }
 
   const commitRename = async (d: Dokumen) => {
@@ -141,6 +159,7 @@ export default function Library({ activeId, onOpen }: Props) {
                       autoFocus
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
+                      onFocus={(e) => e.currentTarget.select()}
                       onBlur={() => void commitRename(d)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') void commitRename(d)
@@ -154,7 +173,22 @@ export default function Library({ activeId, onOpen }: Props) {
                 ) : (
                   <div className="flex items-center gap-3 border-b border-hair pr-4">
                     <button
-                      onClick={() => onOpen(d.id)}
+                      onClick={() => {
+                        // A long press already opened the menu; swallow the tap.
+                        if (longPressed.current) {
+                          longPressed.current = false
+                          return
+                        }
+                        onOpen(d.id)
+                      }}
+                      onPointerDown={() => startPress(d)}
+                      onPointerUp={endPress}
+                      onPointerLeave={endPress}
+                      onPointerCancel={endPress}
+                      onContextMenu={(e) => {
+                        e.preventDefault()
+                        setMenu(d)
+                      }}
                       className={`flex min-w-0 flex-1 items-center gap-3 py-2.5 pl-0 text-left ${
                         d.id === activeId ? 'bg-process-wash' : 'active:bg-plate'
                       }`}
@@ -181,13 +215,6 @@ export default function Library({ activeId, onOpen }: Props) {
                         </span>
                       </span>
                     </button>
-                    <button
-                      onClick={() => startRename(d)}
-                      aria-label={`Ubah nama ${d.name}`}
-                      className="shrink-0 p-2 text-ink-2 active:text-ink"
-                    >
-                      <Icon name="pencil" size={13} />
-                    </button>
                   </div>
                 )}
               </li>
@@ -200,6 +227,36 @@ export default function Library({ activeId, onOpen }: Props) {
         <Icon name="scan" size={15} />
         Scan baru
       </button>
+
+      {/* Long press on a row: the only place rename lives without a visible button. */}
+      {menu && (
+        <div className="fixed inset-0 z-30 flex items-end bg-ink/45" onClick={() => setMenu(null)}>
+          <div
+            className="w-full border-t-2 border-ink bg-paper pb-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-baseline justify-between gap-3 border-l-[3px] border-process px-5 py-3">
+              <span className="truncate text-[15px] font-medium">{menu.name}</span>
+              <button onClick={() => setMenu(null)} aria-label="Tutup" className="shrink-0 p-1 text-ink-2">
+                <Icon name="close" size={12} />
+              </button>
+            </div>
+            <div className="h-0.5 bg-ink" />
+            <div className="mt-4 px-5">
+              <button
+                onClick={() => {
+                  startRename(menu)
+                  setMenu(null)
+                }}
+                className="bar-action gap-2"
+              >
+                <Icon name="pencil" size={15} />
+                Ubah nama
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Install floats: it is the one action a browser-tab user cannot reach
           any other way, and it disappears once the app is on the home screen. */}

@@ -212,6 +212,7 @@ export default function Editor({ id, onBack }: Props) {
                 autoFocus
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
+                onFocus={(e) => e.currentTarget.select()}
                 onBlur={() => void commitRename()}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') void commitRename()
@@ -222,14 +223,16 @@ export default function Editor({ id, onBack }: Props) {
                 className="w-full border-b border-ink bg-transparent pb-0.5 text-center text-[14px] font-medium leading-tight outline-none"
               />
             ) : (
-              <button
-                onClick={startRename}
-                className="mx-auto flex max-w-full items-center gap-1.5"
-                aria-label={`Ubah nama ${doc.name}`}
-              >
+              <div className="mx-auto flex max-w-full items-center gap-1.5">
                 <span className="truncate text-[14px] font-medium leading-tight">{doc.name}</span>
-                <Icon name="pencil" size={13} className="text-ink-2" />
-              </button>
+                <button
+                  onClick={startRename}
+                  aria-label={`Ubah nama ${doc.name}`}
+                  className="shrink-0 p-1 text-ink-2 active:text-ink"
+                >
+                  <Icon name="pencil" size={13} />
+                </button>
+              </div>
             )}
             <div className="num mt-0.5 text-[10px] text-ink-2">
               {String(pages.findIndex((p) => p.id === activeId) + 1).padStart(2, '0')} /{' '}
