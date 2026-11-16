@@ -130,6 +130,13 @@ export default function Editor({ id, onBack }: Props) {
     await save(doc, next)
   }
 
+  // Header and export sheet share this; the Library list renames via putDoc itself.
+  const rename = (name: string) => {
+    if (!doc || name === doc.name) return
+    void save({ ...doc, name }, pages)
+    flash('Nama dokumen diubah')
+  }
+
   const active = useMemo(() => pages.find((p) => p.id === activeId) ?? null, [pages, activeId])
 
   // Rename inline: a dialog for one field is more taps than the field itself.
@@ -147,8 +154,7 @@ export default function Editor({ id, onBack }: Props) {
     if (!doc) return
     const next = draft.trim().slice(0, 80)
     if (!next || next === doc.name) return
-    await save({ ...doc, name: next }, pages)
-    flash('Nama dokumen diubah')
+    rename(next)
   }
 
   if (notFound) {
@@ -279,7 +285,12 @@ export default function Editor({ id, onBack }: Props) {
       )}
 
       {mode === 'export' && (
-        <ExportPanel pages={pages} suggested={doc.name} onClose={() => setMode('view')} />
+        <ExportPanel
+          pages={pages}
+          suggested={doc.name}
+          onRename={rename}
+          onClose={() => setMode('view')}
+        />
       )}
     </div>
   )

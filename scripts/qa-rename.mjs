@@ -91,7 +91,21 @@ export default async function run(page) {
   await page.getByRole('button', { name: 'EKSPOR' }).click()
   await page.waitForTimeout(700)
   const exportName = await page.locator('#export-name').inputValue()
-  await page.screenshot({ path: 'qa/10-export-name.png' })
 
-  return { afterLibrary, afterReload, exportName }
+  // 5. Renaming in the export sheet renames the Dokumen itself, not just the file.
+  await page.locator('#export-name').fill('Sertifikat Rumah')
+  await page.locator('#export-name').press('Enter')
+  await page.waitForTimeout(600)
+  await page.screenshot({ path: 'qa/10-export-name.png' })
+  // Close the sheet by tapping the backdrop above it.
+  await page.mouse.click(195, 12)
+  await page.waitForTimeout(500)
+  const headerName = await page.getByText('Sertifikat Rumah').count()
+  await page.getByRole('button', { name: 'Kembali' }).click()
+  await page.waitForTimeout(800)
+  await page.reload()
+  await page.waitForTimeout(1200)
+  const afterExportRename = await page.getByText('Sertifikat Rumah').count()
+
+  return { afterLibrary, afterReload, exportName, headerName, afterExportRename }
 }

@@ -10,11 +10,13 @@ interface Props {
   pages: Halaman[]
   /** Dokumen name, so renaming in the editor carries into the export filename. */
   suggested: string
+  /** Renaming here renames the Dokumen too, not just the exported file. */
+  onRename: (name: string) => void
   onClose: () => void
 }
 
 /** Export sheet: name, format, then Bagikan (WA etc.) or Unduh. */
-export default function ExportPanel({ pages, suggested, onClose }: Props) {
+export default function ExportPanel({ pages, suggested, onRename, onClose }: Props) {
   const [name, setName] = useState(suggested || defaultName())
   const [format, setFormat] = useState<Format>('pdf')
   const [busy, setBusy] = useState(false)
@@ -29,7 +31,14 @@ export default function ExportPanel({ pages, suggested, onClose }: Props) {
 
   const ext = format === 'png' ? '.PNG' : format === 'jpeg' ? '.JPG' : '.PDF'
 
+  // Blur and every export path persist the name, so the Dokumen keeps it.
+  const commit = () => {
+    const next = name.trim().slice(0, 80)
+    if (next && next !== suggested) onRename(next)
+  }
+
   const make = async (): Promise<{ files: File[]; filename: string }> => {
+    commit()
     const safe = name.trim() || defaultName()
     if (format === 'pdf') {
       const blob = await buildPdf(pages, safe)
@@ -92,6 +101,14 @@ export default function ExportPanel({ pages, suggested, onClose }: Props) {
               id="export-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onBlur={commit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  commit()
+                  e.currentTarget.blur()
+                }
+              }}
+              maxLength={80}
               className="min-w-0 flex-1 bg-transparent text-[15px] outline-none"
             />
             <span className="num shrink-0 text-[12px] text-ink-2">{ext}</span>
