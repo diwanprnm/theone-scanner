@@ -132,6 +132,25 @@ export default function Editor({ id, onBack }: Props) {
 
   const active = useMemo(() => pages.find((p) => p.id === activeId) ?? null, [pages, activeId])
 
+  // Rename inline: a dialog for one field is more taps than the field itself.
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+
+  const startRename = () => {
+    if (!doc) return
+    setDraft(doc.name)
+    setEditing(true)
+  }
+
+  const commitRename = async () => {
+    setEditing(false)
+    if (!doc) return
+    const next = draft.trim().slice(0, 80)
+    if (!next || next === doc.name) return
+    await save({ ...doc, name: next }, pages)
+    flash('Nama dokumen diubah')
+  }
+
   if (notFound) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 px-5 text-center">
@@ -181,8 +200,31 @@ export default function Editor({ id, onBack }: Props) {
             <Icon name="left" size={11} />
             Kembali
           </button>
-          <div className="min-w-0 text-center">
-            <div className="truncate text-[14px] font-medium leading-tight">{doc.name}</div>
+          <div className="min-w-0 flex-1 text-center">
+            {editing ? (
+              <input
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={() => void commitRename()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void commitRename()
+                  if (e.key === 'Escape') setEditing(false)
+                }}
+                maxLength={80}
+                aria-label="Nama dokumen"
+                className="w-full border-b border-ink bg-transparent pb-0.5 text-center text-[14px] font-medium leading-tight outline-none"
+              />
+            ) : (
+              <button
+                onClick={startRename}
+                className="mx-auto flex max-w-full items-center gap-1.5"
+                aria-label={`Ubah nama ${doc.name}`}
+              >
+                <span className="truncate text-[14px] font-medium leading-tight">{doc.name}</span>
+                <Icon name="pencil" size={13} className="text-ink-2" />
+              </button>
+            )}
             <div className="num mt-0.5 text-[10px] text-ink-2">
               {String(pages.findIndex((p) => p.id === activeId) + 1).padStart(2, '0')} /{' '}
               {String(pages.length).padStart(2, '0')}
@@ -199,6 +241,14 @@ export default function Editor({ id, onBack }: Props) {
         </div>
       </header>
       <div className="h-0.5 shrink-0 bg-ink" />
+
+      {/* In the flow, right under the header rule: a floating toast either covered
+          the action bar or the page strip, and 2,5 s of layout shift is cheaper. */}
+      {toast && (
+        <div className="shrink-0 border-b border-hair bg-plate px-4 py-1.5 text-center text-[12px] text-ink">
+          {toast}
+        </div>
+      )}
 
       {pages.length > 0 && (
         <PageStrip
@@ -228,13 +278,9 @@ export default function Editor({ id, onBack }: Props) {
         </div>
       )}
 
-      {toast && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-20 z-30 flex justify-center px-4">
-          <span className="border-2 border-ink bg-paper px-3 py-1.5 text-[12px] text-ink">{toast}</span>
-        </div>
+      {mode === 'export' && (
+        <ExportPanel pages={pages} suggested={doc.name} onClose={() => setMode('view')} />
       )}
-
-      {mode === 'export' && <ExportPanel pages={pages} onClose={() => setMode('view')} />}
     </div>
   )
 }

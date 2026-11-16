@@ -8,12 +8,14 @@ type Format = 'pdf' | 'jpeg' | 'png'
 
 interface Props {
   pages: Halaman[]
+  /** Dokumen name, so renaming in the editor carries into the export filename. */
+  suggested: string
   onClose: () => void
 }
 
 /** Export sheet: name, format, then Bagikan (WA etc.) or Unduh. */
-export default function ExportPanel({ pages, onClose }: Props) {
-  const [name, setName] = useState(defaultName())
+export default function ExportPanel({ pages, suggested, onClose }: Props) {
+  const [name, setName] = useState(suggested || defaultName())
   const [format, setFormat] = useState<Format>('pdf')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)

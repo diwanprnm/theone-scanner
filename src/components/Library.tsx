@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { getPage, listDocs, storageEstimate } from '../lib/db'
+import { getPage, listDocs, putDoc, storageEstimate } from '../lib/db'
 import { renderThumb } from '../lib/render'
 import { createBackup, importBackup } from '../lib/backup'
 import { download } from '../lib/export'
@@ -17,6 +17,8 @@ export default function Library({ activeId, onOpen }: Props) {
   const [docs, setDocs] = useState<Dokumen[]>([])
   const [quota, setQuota] = useState<{ used: number; quota: number } | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
+  const [renaming, setRenaming] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
   const importRef = useRef<HTMLInputElement>(null)
   const { canInstall, installed, install, hint } = useInstall()
 
@@ -46,6 +48,19 @@ export default function Library({ activeId, onOpen }: Props) {
   const size = (n: number) => {
     const [v, unit] = n >= 1073741824 ? [n / 1073741824, 'GB'] : [n / 1048576, 'MB']
     return `${v.toFixed(1).replace('.', ',')} ${unit}`
+  }
+
+  const startRename = (d: Dokumen) => {
+    setDraft(d.name)
+    setRenaming(d.id)
+  }
+
+  const commitRename = async (d: Dokumen) => {
+    setRenaming(null)
+    const next = draft.trim().slice(0, 80)
+    if (!next || next === d.name) return
+    await putDoc({ ...d, name: next })
+    refresh()
   }
 
   return (
@@ -116,35 +131,65 @@ export default function Library({ activeId, onOpen }: Props) {
           <ul>
             {docs.map((d, i) => (
               <li key={d.id}>
-                <button
-                  onClick={() => onOpen(d.id)}
-                  className={`flex w-full items-center gap-3 border-b border-hair py-2.5 pl-0 pr-4 text-left ${
-                    d.id === activeId ? 'bg-process-wash' : 'active:bg-plate'
-                  }`}
-                >
-                  {/* Record number: right-aligned in a fixed column so the digits form a spine. */}
-                  <span
-                    className={`num w-11 shrink-0 border-l-[3px] pr-3 text-right text-[11px] ${
-                      d.id === activeId ? 'border-process text-process' : 'border-transparent text-ink-2'
-                    }`}
-                  >
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <DocThumb doc={d} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-medium">{d.name}</span>
-                    <span className="num mt-0.5 block text-[10px] uppercase text-ink-2">
-                      {String(d.pages.length).padStart(2, '0')} hal ·{' '}
-                      {new Date(d.updatedAt).toLocaleString('id-ID', {
-                        day: '2-digit',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                {renaming === d.id ? (
+                  <div className="flex items-center gap-3 border-b border-hair py-2.5 pr-4">
+                    <span className="num w-11 shrink-0 border-l-[3px] border-process pr-3 text-right text-[11px] text-process">
+                      {String(i + 1).padStart(2, '0')}
                     </span>
-                  </span>
-                  <Icon name="right" size={12} className="text-ink-2" />
-                </button>
+                    <DocThumb doc={d} />
+                    <input
+                      autoFocus
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onBlur={() => void commitRename(d)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') void commitRename(d)
+                        if (e.key === 'Escape') setRenaming(null)
+                      }}
+                      maxLength={80}
+                      aria-label="Nama dokumen"
+                      className="min-w-0 flex-1 border-b border-ink bg-transparent pb-0.5 text-[15px] font-medium outline-none"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 border-b border-hair pr-4">
+                    <button
+                      onClick={() => onOpen(d.id)}
+                      className={`flex min-w-0 flex-1 items-center gap-3 py-2.5 pl-0 text-left ${
+                        d.id === activeId ? 'bg-process-wash' : 'active:bg-plate'
+                      }`}
+                    >
+                      {/* Record number: right-aligned in a fixed column so the digits form a spine. */}
+                      <span
+                        className={`num w-11 shrink-0 border-l-[3px] pr-3 text-right text-[11px] ${
+                          d.id === activeId ? 'border-process text-process' : 'border-transparent text-ink-2'
+                        }`}
+                      >
+                        {String(i + 1).padStart(2, '0')}
+                      </span>
+                      <DocThumb doc={d} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[15px] font-medium">{d.name}</span>
+                        <span className="num mt-0.5 block text-[10px] uppercase text-ink-2">
+                          {String(d.pages.length).padStart(2, '0')} hal ·{' '}
+                          {new Date(d.updatedAt).toLocaleString('id-ID', {
+                            day: '2-digit',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => startRename(d)}
+                      aria-label={`Ubah nama ${d.name}`}
+                      className="shrink-0 p-2 text-ink-2 active:text-ink"
+                    >
+                      <Icon name="pencil" size={13} />
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

@@ -176,23 +176,6 @@ export default function CropEditor({ page, pageIndex = 0, onSave, onCancel }: Pr
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <button
-              onClick={autoDetect}
-              className="link-action inline-flex items-center gap-1 text-[11px]"
-            >
-              <Icon name="crop" size={11} />
-              Otomatis
-            </button>
-            <button
-              onClick={() => {
-                setQuad(fullQuad(page.size))
-                setNote(null)
-              }}
-              className="link-action inline-flex items-center gap-1 text-[11px]"
-            >
-              <Icon name="reset" size={11} />
-              Reset
-            </button>
-            <button
               disabled={bad}
               onClick={() => onSave(quad)}
               className="display inline-flex items-center gap-1.5 bg-ink px-3 py-1.5 text-[12px] text-paper active:opacity-80 disabled:opacity-40"
@@ -229,14 +212,33 @@ export default function CropEditor({ page, pageIndex = 0, onSave, onCancel }: Pr
       )}
 
       <div className="flex shrink-0 items-center justify-between border-t-2 border-ink px-4 py-2">
-        <span className="flex items-center gap-2 text-[11px] text-ink-2">
-          <span className="block h-2 w-2 bg-ink" />
-          Tarik sudut ke pojok kertas
-        </span>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={autoDetect}
+            className="link-action inline-flex items-center gap-1 text-[11px]"
+          >
+            <Icon name="crop" size={11} />
+            Otomatis
+          </button>
+          <button
+            onClick={() => {
+              setQuad(fullQuad(page.size))
+              setNote(null)
+            }}
+            className="link-action inline-flex items-center gap-1 text-[11px]"
+          >
+            <Icon name="reset" size={11} />
+            Reset
+          </button>
+        </div>
         <span className="num text-[11px] text-ink">
           {out.w} × {out.h} px
         </span>
       </div>
+
+      <p className="shrink-0 border-t border-hair px-4 py-1.5 text-center text-[10px] text-ink-2">
+        {note ?? 'Tarik sudut ke pojok kertas, atau pakai Otomatis'}
+      </p>
     </div>
   )
 }

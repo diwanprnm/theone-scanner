@@ -22,6 +22,7 @@ type Name =
   | 'right'
   | 'close'
   | 'camera'
+  | 'pencil'
 
 const PATHS: Record<Name, React.ReactNode> = {
   // A sheet behind a viewfinder corner: scan.
@@ -111,6 +112,14 @@ const PATHS: Record<Name, React.ReactNode> = {
     <>
       <path d="M3 8h3l1.5-2h9L18 8h3v11H3z" />
       <path d="M9 13.5a3 3 0 106 0 3 3 0 10-6 0" />
+    </>
+  ),
+  // A pencil has to survive 12px, so it is one closed diagonal body and a nib,
+  // not an outline with an inner line that fills in at small sizes.
+  pencil: (
+    <>
+      <path d="M3 21l1.5-5L16 4.5 19.5 8 8 19.5 3 21z" />
+      <path d="M14 6.5l3.5 3.5" />
     </>
   ),
 }
